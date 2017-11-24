@@ -54,7 +54,7 @@ server <- function(input, output, session) {
     trends_mp <- trends(data_sel,seasonal=seasonal) %>% left_join(mp, by="mp")
     print(filter(trends_mp, mp=="00067"))
     trends_mp
-  })
+  }) 
   
   #kaart 
   output$kaart <- renderLeaflet({
