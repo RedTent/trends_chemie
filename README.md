@@ -1,3 +1,3 @@
-# trends_chemie
+# Trends in chemie
 
-Shiny app voor trends in chemie
+Dit is een shiny app om trends in chemie weer te geven
