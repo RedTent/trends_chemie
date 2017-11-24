@@ -1,3 +1,19 @@
+import_data <- function(datacsv="fys_chem.csv"){
+  require(readr)
+  require(dplyr)
+  require(lubridate)
+  #kolomnamen <- c("mp","datum","parnr","par","eenheid","detectiegrens","waarde")
+  df <- read_csv2(file=datacsv,col_types=cols(datum=col_date(format="%d-%m-%Y %H:%M:%S")))
+  df <- dplyr::filter(df,!is.na(waarde)) # alle metingen moeten een meetwaarde hebben
+  #Toevoegen jaren en maanden
+  df$jaar <-as.integer(year(df$datum))
+  df$maand <- as.integer(month(df$datum))
+  
+  #info zodat je weet wat je importeert
+  print(paste("Laatste meetdatum is",max(df$datum)))
+  df
+}
+
 import_meetpunten <- function(meetpuntencsv="meetpunten.csv"){
   require(dplyr)
   require(readr)
@@ -51,3 +67,88 @@ HHSKthema <- function(){
            
     )
 }
+
+p_waarde <- function(zstat){
+  p <- min(pnorm(zstat),abs(pnorm(zstat)-1))
+  p
+  
+}
+
+ber_zstat <- function(s,var_s){
+  zstat <- (s-sign(s))/sqrt(var_s)
+}
+
+sen_JT <- function (waarden,datums){ 
+  #modified zyp.sen
+  
+  zyp.slopediff <- function(i, xx, yy, n) (yy[1:(n - i)] - yy[(i + 1):n])/(xx[1:(n - i)] - xx[(i + 1):n])
+  
+  x <- datums
+  y <- waarden
+  n <- length(x)
+  
+  slopes <- unlist(lapply(1:(n - 1), zyp.slopediff, x, y, n))
+  sni <- which(is.finite(slopes))
+  slope <- median(slopes[sni])
+  intercepts <- y - slope * x
+  intercept <- median(intercepts)
+  res <- list(intercept = intercept, slope= slope)
+  return(res)
+}
+
+trends <- function(data, seasonal = FALSE){
+  require(dplyr)
+  library(trend)
+  #library(zyp)
+  
+  if(!seasonal){
+  trendtest<- data %>% 
+    group_by(mp, parnr, par) %>% 
+    mutate(aantal = n()) %>% 
+    filter(aantal>2) %>%
+    summarise(z_stat = mk.test(waarde)$statistic, trendrichting_mk = sign(z_stat), p_waarde_mk = p_waarde(z_stat)) %>% 
+    select(-z_stat)}
+  
+  
+  
+  if(seasonal){
+  trendtest <- data %>%
+    group_by(mp, parnr, par, maand) %>% 
+    mutate(aantal = n()) %>% 
+    filter(aantal > 2) %>%
+    summarise(s_stat =s_score(waarde), var_s = var_s(waarde)) %>% #print() %>% 
+    ungroup() %>% 
+    group_by(mp,parnr,par) %>% 
+    summarise(s_stat_tot = sum(s_stat, na.rm=TRUE), var_s_tot = sum(var_s, na.rm=TRUE), z_stat = ber_zstat(s_stat_tot,var_s_tot), trendrichting_mk = sign(s_stat_tot), p_waarde_mk=p_waarde(z_stat)) %>% 
+    select(-s_stat_tot,-var_s_tot,-z_stat)}
+  
+  trendtest <- trendtest %>% mutate(groep = case_when(trendrichting_mk==1&p_waarde_mk<0.05 ~ "Stijgende trend",
+                                                      trendrichting_mk==-1&p_waarde_mk<0.05 ~ "Dalende trend",
+                                                      TRUE ~ "Geen trend"))
+  trendtest
+  
+}
+
+
+
+
+s_score <- function (x){
+  n <- length(x)
+  S <- 0
+  for (k in 1:(n - 1)) {
+    for (j in k:n) {
+      S <- S + sign(x[j] - x[k])
+    }
+  }
+  return(S)
+}
+
+var_s <- function (x) {
+  t <- table(x)
+  n <- length(x)
+  tadjs <- sum(t * (t - 1) * (2 * t + 5))
+  varS <- (n * (n - 1) * (2 * n + 5) - tadjs)/18
+  return(varS)
+}
+
+
