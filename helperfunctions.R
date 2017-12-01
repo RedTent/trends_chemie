@@ -151,4 +151,14 @@ var_s <- function (x) {
   return(varS)
 }
 
+create_app_data <- function(){
+library(lubridate)
+library(dplyr)  
+  
+  data <- import_data("data/fys_chem.zip") %>% semi_join(y = filter(meetpuntendf, meetpuntsoort == "Regulier"), by = "mp")
+  appdata <- data %>% filter(parnr<100|(parnr>199&parnr<302)|(parnr>999&parnr<2000))
+  appdata3 <- appdata %>% mutate(datum = paste(day(datum),month(datum),year(datum),sep="-"))
+  appdata3 <- appdata3 %>% mutate(datum = paste0(datum," 0:00:00"))
+  write.table(appdata3,"data/fys_chem_app.csv", row.names = FALSE, sep=";", dec=",", na = "", quote=FALSE)
 
+}

@@ -21,7 +21,8 @@ HHSKthema()
 waterschapsgrens <- readOGR(dsn='data/shape/wsgrens2.shp', stringsAsFactors = FALSE)
 meetpuntendf <- import_meetpunten("data/meetpunten2.csv")
 parameterdf <- import_parameters("data/parameters.csv")
-data <- import_data("data/fys_chem.zip") %>% semi_join(y = filter(meetpuntendf, meetpuntsoort == "Regulier"), by = "mp")
+#data <- import_data("data/fys_chem.zip") %>% semi_join(y = filter(meetpuntendf, meetpuntsoort == "Regulier"), by = "mp")
+data <- import_data("data/fys_chem_app.zip")
 
 par_choice <- parameterdf %>%  filter(parnr<100|(parnr>199&parnr<302)|(parnr>999&parnr<2000)) %>% df_to_named_list(waarden = 1, namen = 3)
 
