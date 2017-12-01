@@ -1,3 +1,5 @@
+#Shiny-app Trends in chemie
+# om schijntrends te voorkomen worden detectiegrenswaarden op gecorrigeerd naar de hoogste detectiegrens. Dit vermindert wel het onderscheidend vermogen.
 
 source("helperfunctions.R")
 
@@ -28,7 +30,8 @@ par_choice <- parameterdf %>%  filter(parnr<100|(parnr>199&parnr<302)|(parnr>999
 ui <- fluidPage(theme = "shiny_ORIG_JT.css",
    
    
-   titlePanel(title = p(img(src = "logo website.png", id="HHSK_logo", height=80), "TRENDS IN CHEMIE", align="center",style="padding-bottom:40px"), windowTitle = "HHSK - Ontwikkeling soorten"),
+   titlePanel(title = p(img(src = "logo website.png", id="HHSK_logo", height=80), "TRENDS IN CHEMIE", align="center",style="padding-bottom:40px"), 
+              windowTitle = "HHSK - Trends in chemie"),
    
    
    sidebarLayout(
@@ -36,8 +39,12 @@ ui <- fluidPage(theme = "shiny_ORIG_JT.css",
         selectInput(inputId = "par_sel", label = "Kies parameter", choices = par_choice),
         sliderInput(inputId = "periode", label = "Kies periode", value = c(2007,2017), step = 1, min = 1963, max =2017, round = TRUE, sep = "", animate = FALSE),
         div(style = 'overflow-x: scroll', tableOutput("tabel")),
-        htmlOutput("opmerking")
+        htmlOutput("opmerking"),
+        HTML("</br></br></br></br></br>De trendtests worden uitgevoerd met een Mann-Kendall-trendtest. De trend wordt als significant beschouwd bij een p-waarde kleiner dan 0,05.
+             </br></br> De testen voor parameters met vaste seizoensdynamiek (o.a. chloride en nutriënten) worden uitgevoerd met een test waarbij gecorrigeerd wordt voor de seizoenen.")
+        
       ), # end of side bar
+      
       
       mainPanel(
         leafletOutput("kaart", height = 800)
@@ -52,6 +59,7 @@ server <- function(input, output, session) {
   mp_trend <- reactive({
     data_sel <- data %>% filter(parnr == input$par_sel, jaar >= input$periode[1], jaar <= input$periode[2])
     data_sel <- data_sel %>% group_by(mp) %>% filter(max(jaar) > input$periode[2] - 10 ) %>% ungroup() #alleen testen als er van de laatste 10 jaar data is
+    data_sel <- data_sel %>% group_by(mp) %>% mutate(waarde = ifelse(is.na(detectiegrens),waarde,ifelse(detectiegrens=="<",max(waarde),waarde))) # verandert de detectiegrenswaarde in de hoogste detectiegrenswaarde
     mp_sel <- meetpuntendf %>% select(mp,lat,long)
     seasonal <- ifelse(input$par_sel<100,TRUE,FALSE)
     trends_mp <- trends(data_sel,seasonal=seasonal) %>% left_join(mp_sel, by="mp")
@@ -80,7 +88,7 @@ server <- function(input, output, session) {
   
    output$opmerking <- renderText({
      ifelse((input$periode[2] - 10 > input$periode[1]),
-            paste0("</br>N.B. Locaties worden alleen meegenomen als er na <i>", input$periode[2] - 10,"</i> gemeten is."), "")
+            paste0("</br>N.B. Locaties worden alleen meegenomen als er na <i>", input$periode[2] - 10,"</i> nog metingen zijn."), "")
           })
     
 } # end of server

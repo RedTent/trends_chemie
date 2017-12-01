@@ -24,7 +24,7 @@ EDITS JT
   font-family:inherit;
   font-weight:bold;
   line-height:1.1;
-  color:#0079c2} /*HHSK blauw*/
+  color:#0079c2;} /*HHSK blauw*/
   
 #HHSK_logo{
  height:80px;
@@ -48,6 +48,10 @@ body{
 /*ronde leaflet legenda*/
 .legend i{
   border-radius:50%;
+}
+
+thead{
+  color:#0079c2;
 }
   
 #Titel{
