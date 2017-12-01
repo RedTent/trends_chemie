@@ -35,7 +35,8 @@ ui <- fluidPage(theme = "shiny_ORIG_JT.css",
       sidebarPanel(
         selectInput(inputId = "par_sel", label = "Kies parameter", choices = par_choice),
         sliderInput(inputId = "periode", label = "Kies periode", value = c(2007,2017), step = 1, min = 1963, max =2017, round = TRUE, sep = "", animate = FALSE),
-        div(style = 'overflow-x: scroll', tableOutput("tabel"))
+        div(style = 'overflow-x: scroll', tableOutput("tabel")),
+        htmlOutput("opmerking")
       ), # end of side bar
       
       mainPanel(
@@ -47,8 +48,10 @@ ui <- fluidPage(theme = "shiny_ORIG_JT.css",
 # SERVER
 server <- function(input, output, session) {
   
+  # bereken trends
   mp_trend <- reactive({
     data_sel <- data %>% filter(parnr == input$par_sel, jaar >= input$periode[1], jaar <= input$periode[2])
+    data_sel <- data_sel %>% group_by(mp) %>% filter(max(jaar) > input$periode[2] - 10 ) %>% ungroup() #alleen testen als er van de laatste 10 jaar data is
     mp_sel <- meetpuntendf %>% select(mp,lat,long)
     seasonal <- ifelse(input$par_sel<100,TRUE,FALSE)
     trends_mp <- trends(data_sel,seasonal=seasonal) %>% left_join(mp_sel, by="mp")
@@ -56,26 +59,30 @@ server <- function(input, output, session) {
     trends_mp
   }) 
   
-  #kaart 
+  # kaart basis
   output$kaart <- renderLeaflet({
     leaflet() %>% addTiles() %>% addPolylines(data = waterschapsgrens, color = "red") %>% 
       addLegend(colors= c("blue","grey","red"), labels = c("Dalende trend", "Geen trend aangetoond", "Stijgende trend")) 
     })
    
+  # ververs markers op kaart
   observe({
     pal <- colorFactor(c("red","grey","blue"),levels=c("Stijgende trend","Geen trend","Dalende trend"))
     leafletProxy("kaart", session) %>% clearMarkers() %>% 
     addCircleMarkers(data=mp_trend(),group=~groep, opacity=0, fillOpacity = 0.8, fillColor=~pal(groep), radius = 6, label = ~mp) 
-    }) 
+    })
   
-  #data_sel <- reactive({data_sel <- data %>% filter(parnr == input$par_sel, jaar >= input$periode[1], jaar <= input$periode[2])})
-  
-  output$tabel <- renderTable({mp_trend() %>% group_by(groep) %>% summarise(`Aantal locaties` = n()) %>% ungroup() %>% 
+  # tabel met overizhct
+    output$tabel <- renderTable({mp_trend() %>% group_by(groep) %>% summarise(`Aantal locaties` = n()) %>% ungroup() %>% 
       mutate(Percentage = paste0(format(`Aantal locaties`/sum(`Aantal locaties`) * 100, digits = 2, decimal.mark= ","), " %" )) %>% 
     rename("Trendrichting" = "groep")
     })
   
-   
+   output$opmerking <- renderText({
+     ifelse((input$periode[2] - 10 > input$periode[1]),
+            paste0("</br>N.B. Locaties worden alleen meegenomen als er na <i>", input$periode[2] - 10,"</i> gemeten is."), "")
+          })
+    
 } # end of server
 
 
